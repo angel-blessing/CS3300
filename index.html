@@ -1,0 +1,150 @@
+<html>
+	<title>
+		INFO 3300 Project 2
+	</title>
+	<script src="https://d3js.org/d3.v4.min.js"></script>
+	<link rel="stylesheet" href="css/style.css">
+	<h1> March Madness </h1>
+	<div id = "bracket">
+		<h2> March Madness 2017 </h2>
+		<svg id = "bracketCircle" height = "1000px" width = "1000px"></svg>
+	</div>
+	<script>
+		var rawScoreData;
+	    function parseLine(line){
+			return {
+				rd0: Number(line["rd1_win"]),
+				rd1: Number(line["rd1_win"]),
+				rd2: Number(line["rd2_win"]),
+				rd3: Number(line["rd3_win"]),
+				rd4: Number(line["rd4_win"]),
+				rd5: Number(line["rd5_win"]),
+				rd6: Number(line["rd6_win"]),
+				teamID: Number(line["team_id"]),
+				teamName: line["team_name"],
+				teamRating: Number(line["team_rating"]),
+				teamRegion: line["team_region"],
+				teamSeed: Number(line["team_seed"]),
+				placement: Number(line["position"])
+			};
+		}
+		var roundData = [];
+		var lastVal;
+	    // Load data for state visualization
+		d3.csv("Data/filtered_fivethirtyeight_ncaa_forecasts.csv", parseLine, function(data){
+			rawScoreData = data;
+			teamData = d3.nest().key(function (d) {
+				return d.teamName;
+			}).map(rawScoreData);
+			for (var i = 0; i < 7; i++){
+				var tempRoundData = d3.nest().key(function (d) {
+					return d.teamName;
+				}).map(rawScoreData);
+				roundData.push(tempRoundData);
+			}
+			//createBracket(roundData);
+			createCircle(teamData);
+		});
+		function createSlices(){
+			var slices = [];
+			for (var roundNum = 0; roundNum < 7; roundNum++){
+				for (var gameNum = 1; gameNum <= 64/Math.pow(2, roundNum); gameNum++){
+					var currSlice = {
+						x: gameNum,
+						y: roundNum
+					}
+					slices.push(currSlice);
+				}
+			}
+			return slices;
+		}
+		function getArc(){
+			var width = 840,
+			    height = width,
+			    radius = 250,
+			    gameScale = d3.scaleLinear().domain([1, 65]).range([0, 2 * Math.PI]),
+			    roundScale = d3.scaleLinear().domain([0, 6]).range([radius, 0]),
+			    duration = 1000;
+			return d3.arc()
+			    .startAngle(function(d) { 
+			    	var xDisplacement = 1 + ((d.x - 1) * Math.pow(2, d.y));
+			    	console.log("b" + xDisplacement);
+			    	return Math.max(0, Math.min(2 * Math.PI, gameScale(xDisplacement))); 
+			    })
+			    .endAngle(function(d) { 
+			    	var xDisplacement =  1 + ((d.x) * Math.pow(2, d.y));
+			    	console.log("e" + xDisplacement);
+			    	return Math.max(0, Math.min(2 * Math.PI, gameScale(xDisplacement))); })
+			 	.innerRadius(function(d) { 
+			 		return Math.max(0, roundScale(d.y)); })
+			    .outerRadius(function(d) { 
+			    	return Math.max(0, roundScale(d.y + 1)); });
+		}
+		var pi;
+		function createCircle(data){
+			// Potentially 1 to 63?
+			var width = 840,
+			    height = width,
+			    radius = width,
+			    duration = 1000;
+		    var bracketSvg = d3.select("#bracketCircle")
+		    				.append("g")
+		    				.attr("transform", "translate(" + width/2 + "," + width/2 + ")");
+		    var slices = createSlices();
+		    pi = slices;
+			var path = bracketSvg.selectAll("path").data(slices).enter()
+					.append("path")
+					.attr("d", getArc())
+					.style("fill", function(d){
+						return d3.hsl(360, d.x/64, d.y/6);
+					});
+		}   
+		/*
+		function getArc(roundNum){
+			console.log(roundNum);
+			var width = 840,
+			    height = width,
+			    radius = 250,
+			    x = d3.scaleLinear().domain([1, (64/Math.pow(2, roundNum))]).range([0, 2 * Math.PI]),
+			    y = d3.scaleLinear().domain([0, 6]).range([radius, 0]),
+			    duration = 1000;
+			return d3.arc()
+			    .startAngle(function(d) { 
+			    	console.log("start");
+			    	var xDisplacement = Math.floor(d[0].placement/Math.pow(2, roundNum));
+			    	return Math.max(0, Math.min(2 * Math.PI, x(xDisplacement))); 
+			    })
+			    .endAngle(function(d) { 
+			    	var xDisplacement = Math.floor((d[0].placement + 1)/Math.pow(2, roundNum));
+			    	//console.log(xDisplacement);
+			    	return Math.max(0, Math.min(2 * Math.PI, x(xDisplacement))); })
+			 	.innerRadius(function(d) { 
+			 		//console.log("round " + roundNum + " " + Math.max(0, y(roundNum)));
+			 		return Math.max(0, y(roundNum)); })
+			    .outerRadius(function(d) { return Math.max(0, y(roundNum + 1)); });
+		}
+		// Creats the circular bracket
+		function createBracket(data){
+			// Potentially 1 to 63?
+			var width = 840,
+			    height = width,
+			    radius = width,
+			    x = d3.scaleLinear().domain([1,64]).range([0, 2 * Math.PI]),
+			    y = d3.scalePow().exponent(2).domain([1, 6]).range([(2 * Math.PI)/64, radius]),
+			    duration = 1000;
+		    var bracketSvg = d3.select("#bracketCircle")
+		    				.append("g")
+		    				.attr("transform", "translate(" + width/2 + "," + width/2 + ")");
+			for (var roundNum = 0; roundNum < 7; roundNum++){
+				var path = bracketSvg.selectAll("g").data(data[roundNum].values(), function(d) { return d;}).enter()
+					.append("path")
+					.attr("d", getArc(roundNum))
+					.style("fill", function(d){
+						//console.log("hi");
+						return d3.hsl(360, d[0].placement/100, 1 - d[0].placement/100);
+					});
+			}
+		}
+		*/
+	</script>
+</html>
