@@ -110,47 +110,46 @@
 		    pi = slices;
 		    var lastID = "";
 		    var roundBins = getScales();
-			var path = bracketSvg.selectAll("path").data(slices).enter()
-						.append("path")
-						.attr("d", getArc())
-						.attr("id", function(d) {
-							return "p" + d.x + d.y;
-						})
-						.on("mousemove", function(d){
-							
-							if (lastID != ""){
-								bracketSvg.selectAll("#p" + lastID.x + lastID.y)
-											.style("fill", function(d){
-												return "black";
-												});
-								for (var i = 1; i < 6; i++){
-									var currScale = roundBins[i - 1]; 
-									var currID = "#p" + currScale(lastID.x) + i;
-									bracketSvg.selectAll(currID)
-										.style("fill", function(d){
-											return "black";
-									});
-								}
-							}
-							if (d.y == 0){
-								lastID = {
-									x: d.x,
-									y: d.y
-								};
-								bracketSvg.selectAll("#p" + d.x + d.y)
-											.style("fill", function(d){
-												return "none";
-												});
-								for (var i = 1; i < 6; i++){
-									var currScale = roundBins[i - 1]; 
-									var currID = "#p" + currScale(d.x) + i;
-									bracketSvg.selectAll(currID)
-										.style("fill", function(d){
-											return "none";
-									});
-								}
-							}
-						});
+			var paths = bracketSvg.selectAll("path");	
+			var hueScale = d3.scaleLinear().domain([1,64]).range([0, 360]);
+			paths.data(slices).enter()
+				.append("path")
+				.attr("d", getArc())
+				.attr("id", function(d) {
+					return "p" + d.x + d.y;
+				})
+				.on("mousemove", function(d){
+					//console.log(d);
+					if (lastID != ""){
+						bracketSvg.selectAll("#p" + lastID.x + lastID.y)
+									.style("fill", function(d){
+										return "black";
+										});
+						for (var i = 1; i < 6; i++){
+							var currScale = roundBins[i - 1]; 
+							var currID = "#p" + currScale(lastID.x) + i;
+							bracketSvg.selectAll(currID)
+								.style("fill", function(d){
+									return "black";
+							});
+						}
+					}
+					var hueIndex = hueScale(d.x);
+					var saturationIndex = reverseData.get(d.x)[0].rd0;
+					if (d.y == 0){
+						lastID = {x: d.x, y: d.y};
+						bracketSvg.selectAll("#p" + d.x + d.y)
+									.style("fill", d3.hsl(hueIndex, saturationIndex, 0.5));
+						for (var i = 1; i < 6; i++){
+							var currScale = roundBins[i - 1]; 
+							var currID = "#p" + currScale(d.x) + i;
+							var rdID = "rd" + i;
+							saturationIndex = reverseData.get(d.x)[0][rdID];
+							bracketSvg.selectAll(currID)
+								.style("fill", d3.hsl(hueIndex, saturationIndex, 0.5));
+						}
+					}
+				});
 		}   
 		/*
 		function getArc(roundNum){
