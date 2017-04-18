@@ -70,19 +70,40 @@
 			    roundScale = d3.scaleLinear().domain([0, 6]).range([radius, 0]),
 			    duration = 1000;
 			return d3.arc()
-			    .startAngle(function(d) { 
+			    .startAngle(function(d) {
 			    	var xDisplacement = 1 + ((d.x - 1) * Math.pow(2, d.y));
 			    	//console.log("b" + xDisplacement);
-			    	return Math.max(0, Math.min(2 * Math.PI, gameScale(xDisplacement))); 
+			    	return Math.max(0, Math.min(2 * Math.PI, gameScale(xDisplacement)));
 			    })
-			    .endAngle(function(d) { 
+			    .endAngle(function(d) {
 			    	var xDisplacement =  1 + ((d.x) * Math.pow(2, d.y));
 			    	//console.log("e" + xDisplacement);
 			    	return Math.max(0, Math.min(2 * Math.PI, gameScale(xDisplacement))); })
-			 	.innerRadius(function(d) { 
+			 	.innerRadius(function(d) {
 			 		return Math.max(0, roundScale(d.y)); })
-			    .outerRadius(function(d) { 
+			    .outerRadius(function(d) {
 			    	return Math.max(0, roundScale(d.y + 1)); });
+		}
+		function getCentroid(d){
+			//mapping this on the array of slices will produce these basic objects
+			//that can be passed to a d3.arc function
+
+			var width = 840,
+			    height = width,
+			    radius = 250,
+			    gameScale = d3.scaleLinear().domain([1, 65]).range([0, 2 * Math.PI]),
+			    roundScale = d3.scaleLinear().domain([0, 6]).range([radius, 0]),
+			    duration = 1000;
+			var xDisplacement1 = 1 + ((d.x - 1) * Math.pow(2, d.y));
+			var xDisplacement2 =  1 + ((d.x) * Math.pow(2, d.y));
+			var arc = d3.arc();
+
+			return arc.centroid({
+				innerRadius: Math.max(0, roundScale(d.y)),
+				outerRadius: Math.max(0, roundScale(d.y + 1)),
+				startAngle: Math.max(0, Math.min(2 * Math.PI, gameScale(xDisplacement1))),
+				endAngle: Math.max(0, Math.min(2 * Math.PI, gameScale(xDisplacement2)))
+			});
 		}
 		function getScales(){
 			var roundScales = [];
@@ -110,7 +131,7 @@
 		    pi = slices;
 		    var lastID = "";
 		    var roundBins = getScales();
-			var paths = bracketSvg.selectAll("path");	
+			var paths = bracketSvg.selectAll("path");
 			var hueScale = d3.scaleLinear().domain([1,64]).range([0, 360]);
 			paths.data(slices).enter()
 				.append("path")
@@ -126,7 +147,7 @@
 										return "black";
 										});
 						for (var i = 1; i < 6; i++){
-							var currScale = roundBins[i - 1]; 
+							var currScale = roundBins[i - 1];
 							var currID = "#p" + currScale(lastID.x) + i;
 							bracketSvg.selectAll(currID)
 								.style("fill", function(d){
@@ -141,7 +162,7 @@
 						bracketSvg.selectAll("#p" + d.x + d.y)
 									.style("fill", d3.hsl(hueIndex, saturationIndex, 0.5));
 						for (var i = 1; i < 6; i++){
-							var currScale = roundBins[i - 1]; 
+							var currScale = roundBins[i - 1];
 							var currID = "#p" + currScale(d.x) + i;
 							var rdID = "rd" + i;
 							saturationIndex = reverseData.get(d.x)[0][rdID];
@@ -150,7 +171,16 @@
 						}
 					}
 				});
-		}   
+
+				slices.forEach(function(slice){
+					var c = getCentroid(slice);
+					bracketSvg.append("text")
+					.text("test")
+					.attr("x", c[0])
+					.attr("y", c[1])
+					.attr("text-anchor", "middle");
+				});
+		}
 		/*
 		function getArc(roundNum){
 			console.log(roundNum);
@@ -161,16 +191,16 @@
 			    y = d3.scaleLinear().domain([0, 6]).range([radius, 0]),
 			    duration = 1000;
 			return d3.arc()
-			    .startAngle(function(d) { 
+			    .startAngle(function(d) {
 			    	console.log("start");
 			    	var xDisplacement = Math.floor(d[0].placement/Math.pow(2, roundNum));
-			    	return Math.max(0, Math.min(2 * Math.PI, x(xDisplacement))); 
+			    	return Math.max(0, Math.min(2 * Math.PI, x(xDisplacement)));
 			    })
-			    .endAngle(function(d) { 
+			    .endAngle(function(d) {
 			    	var xDisplacement = Math.floor((d[0].placement + 1)/Math.pow(2, roundNum));
 			    	//console.log(xDisplacement);
 			    	return Math.max(0, Math.min(2 * Math.PI, x(xDisplacement))); })
-			 	.innerRadius(function(d) { 
+			 	.innerRadius(function(d) {
 			 		//console.log("round " + roundNum + " " + Math.max(0, y(roundNum)));
 			 		return Math.max(0, y(roundNum)); })
 			    .outerRadius(function(d) { return Math.max(0, y(roundNum + 1)); });
