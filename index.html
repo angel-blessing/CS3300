@@ -175,10 +175,11 @@
 				slices.forEach(function(slice){
 					var c = getCentroid(slice);
 					bracketSvg.append("text")
-					.text("test")
+					.text(reverseData.get(slice.x)[0].rd0.toFixed(2))
 					.attr("x", c[0])
 					.attr("y", c[1])
-					.attr("text-anchor", "middle");
+					.attr("text-anchor", "middle")
+					.attr("font-size", "8");
 				});
 		}
 		/*
