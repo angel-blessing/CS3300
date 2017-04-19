@@ -41,6 +41,7 @@
 				rdScore4: line["Round 4"],
 				rdScore5: line["Round 5"],
 				rdScore6: line["Round 6"],
+				rdWin0: Number(line["rd0_win"]),
 				rdWin1: Number(line["rd1_win"]),
 				rdWin2: Number(line["rd2_win"]),
 				rdWin3: Number(line["rd3_win"]),
@@ -57,6 +58,7 @@
 		var reverseScoreData;
 		var teamPredict;
 		var teamResults;
+		var winningTeams;
 	    // Load data for forecast
 		d3.csv("Data/filtered_fivethirtyeight_ncaa_forecasts.csv", parsePredictLine, function(data){
 			rawPredictData = data;
@@ -83,25 +85,23 @@
 			reverseScoreData = d3.nest().key(function (d) {
 				return d.placement;
 			}).map(rawScoreData);
-			//createCircle(teamResults);
-			getWinners();
+			winningTeams = getWinners();
 		});
-		var winningTeams = [];
+		// Creates a datastructure to hold the winning teams for each round
 		function getWinners(){
+			var tempWinners = [];
 			for (var round = 0; round < 7; round++){
 				var interval = Math.pow(2, round);
 				var roundBins = getScales();
-				var currScale = roundBins[round - 1];
+				var currScale = roundBins[round];
 				var game = 1;
 				var teamsPerRound = [];
-				while (game < 64){
+				while (game <= 64){
 					var interval = Math.pow(2, round);
-					//console.log("Overall " + game);
 					for (var i = 0; i < interval; i++){
 						var rdID = "rdWin" + round; 
 						var isWinner = reverseScoreData.get(game + i)[0][rdID];
 						if (isWinner){
-							//console.log("Game " + game + i);
 							var teamName = reverseScoreData.get(game + i)[0]["teamName"];
 							var winningTeam = {position: currScale(game + i), name: teamName};
 							if (Number(round) == 5 && teamName == "Gonzaga"){
@@ -112,8 +112,9 @@
 					}
 					game += interval;
 				}
-				winningTeams.push(teamsPerRound);
+				tempWinners.push(teamsPerRound);
 			}
+			return tempWinners;
 		}
 		// Global variables
 		var roundData = [];
@@ -178,6 +179,9 @@
 		// Creates the quantize scales for each round to the outer placement
 		function getScales(){
 			var roundScales = [];
+			// Placeholder scale for round 0 to make things easier later
+			var round0 = d3.scaleLinear().domain([1,65]).range([1,65]);
+			roundScales.push(round0);
 			for (var round = 1; round < 7; round++){
 				var tempRange = []
 				for (var rangeNum = 1; rangeNum <= 64/Math.pow(2, round); rangeNum++){
@@ -191,11 +195,11 @@
 		// Removes all changes made by last interaction
 		function reset(bracketSvg, roundBins, lastID){
 			bracketSvg.selectAll("#p" + lastID.x + lastID.y)
-						.style("fill", function(d){
-							return "white";
-							});
+				.style("fill", function(d){
+					return "white";
+			});
 			for (var i = 1; i < 6; i++){
-				var currScale = roundBins[i - 1];
+				var currScale = roundBins[i];
 				var currID = "#p" + currScale(lastID.x) + i;
 				bracketSvg.selectAll(currID)
 					.style("fill", function(d){
@@ -204,6 +208,65 @@
 			}
 			bracketSvg.selectAll("#centerLabel").remove();
 			bracketSvg.selectAll("#sliceLabel").remove();
+		}
+		var myScale;
+		// On mouse move
+		function mouseMove(d){
+			//console.log(d);
+			var roundBins = getScales();
+			var hueScale = d3.scaleLinear().domain([1,64]).range([0, 360]);
+			if (lastID != ""){
+				reset(bracketSvg, roundBins, lastID);
+			}
+			var hueIndex = hueScale(d.x);
+			if (d.y == currentDay){
+				lastID = {x: d.x, y: d.y};
+				// Highlights outer layer
+				bracketSvg.selectAll("#p" + d.x + d.y)
+							.style("fill", "#C8C8C8");
+				var teamName = winningTeams[d.y][d.x -1].name;
+				var tempTeam = teamPredict.get(teamName);
+				// Goes through path and fills in
+				for (var i = currentDay + 1; i < 6; i++){
+					var currScale = roundBins[i];
+					var currID = "#p" + currScale(tempTeam[0]["placement"]) + i;
+					var rdID = "rd" + i;
+					var saturationIndex = tempTeam[0][rdID];
+					bracketSvg.selectAll(currID)
+						.style("fill", d3.hsl(hueIndex, saturationIndex, 0.5));
+					// Slice labels
+					var currSlice = {x: currScale(tempTeam[0]["placement"]), y:i};
+					var currCentroid = getCentroid(currSlice);
+					bracketSvg.append("text")
+						.attr("id", "sliceLabel")
+						.attr("x", currCentroid[0])
+						.attr("y", currCentroid[1])
+						.attr("text-anchor", "middle")
+						.attr("font-size", "8")
+						.text(saturationIndex.toFixed(2));
+				}
+				// Center label
+				bracketSvg.append("circle")
+					.attr("id", "centerLabel")
+					.attr("cx", 0)
+					.attr("cy", 0)
+					.attr("r", padding)
+					.attr("fill", "white");
+				bracketSvg.append("text")
+					.attr("id", "centerLabel")
+					.attr("x", 0)
+					.attr("y", 0)
+					.attr("font-size", "8pt")
+					.attr("text-anchor", "middle")
+					.text(teamName);
+				bracketSvg.append("text")
+					.attr("id", "centerLabel")
+					.attr("x", 0)
+					.attr("y", 10)
+					.attr("font-size", "8pt")
+					.attr("text-anchor", "middle")	
+					.text(tempTeam[0]["rd6"].toFixed(2));
+			}
 		}
 		var myScales;
 		var width = 900,
@@ -214,13 +277,12 @@
 	    var bracketSvg = d3.select("#bracketCircle")
 		    				.append("g")
 		    				.attr("transform", "translate(" + width/2 + "," + width/2 + ")");
+		var lastID = "";
+		// Main function: creates the circle using the slices and then updates with interactivity
 		function createCircle(data){
-		    var slices = createSlices();
+			var slices = createSlices();
 		    pi = slices;
-		    var lastID = "";
-		    var roundBins = getScales();
 			var paths = bracketSvg.selectAll("path");
-			var hueScale = d3.scaleLinear().domain([1,64]).range([0, 360]);
 			paths.data(slices).enter()
 				.append("path")
 				.attr("d", getArc())
@@ -229,64 +291,7 @@
 				})
 				.attr("fill", "white")
 				.attr("stroke", "#90908B")
-				.on("mousemove", function(d){
-					//console.log(d);
-					if (lastID != ""){
-						reset(bracketSvg, roundBins, lastID);
-					}
-					var hueIndex = hueScale(d.x);
-					var saturationIndex = reverseData.get(d.x)[0].rd0;
-					if (d.y == currentDay){
-						//console.log(d);
-						lastID = {x: d.x, y: d.y};
-						// Highlights outer layer
-						bracketSvg.selectAll("#p" + d.x + d.y)
-									.style("fill", "#C8C8C8");
-						// Goes through path and fills in
-						for (var i = currentDay + 1; i < 6; i++){
-							var currScale = roundBins[i - 1];
-							var currID = "#p" + currScale(d.x) + i;
-							var rdID = "rd" + i;
-							console.log("x: " + d.x);
-							console.log("Scaled x: " + currScale(d.x));
-							saturationIndex = reverseData.get(d.x)[0][rdID];
-							bracketSvg.selectAll(currID)
-								.style("fill", d3.hsl(hueIndex, saturationIndex, 0.5));
-							// Slice labels
-							var currSlice = {x: currScale(d.x), y:i};
-							var currCentroid = getCentroid(currSlice);
-							bracketSvg.append("text")
-								.attr("id", "sliceLabel")
-								.attr("x", currCentroid[0])
-								.attr("y", currCentroid[1])
-								.attr("text-anchor", "middle")
-								.attr("font-size", "8")
-								.text(saturationIndex.toFixed(2));
-
-						}
-						// Center label
-						bracketSvg.append("circle")
-							.attr("id", "centerLabel")
-							.attr("cx", 0)
-							.attr("cy", 0)
-							.attr("r", padding)
-							.attr("fill", "white");
-						bracketSvg.append("text")
-							.attr("id", "centerLabel")
-							.attr("x", 0)
-							.attr("y", 0)
-							.attr("font-size", "8pt")
-							.attr("text-anchor", "middle")
-							.text(reverseData.get(d.x)[0]["teamName"]);
-						bracketSvg.append("text")
-							.attr("id", "centerLabel")
-							.attr("x", 0)
-							.attr("y", 10)
-							.attr("font-size", "8pt")
-							.attr("text-anchor", "middle")	
-							.text(reverseData.get(d.x)[0]["rd6"].toFixed(2));
-					}
-			});
+				.on("mousemove", mouseMove);
 			// Initializes the center circle
 			bracketSvg.append("circle")
 				.attr("cx", 0)
@@ -307,7 +312,6 @@
 					.attr("y", currCentroid[1] - 5)
 					.attr("width", "15")
 					.attr("height", "15");
-				//console.log(teamName);
 			}
 		}
 		function updateProbabilities(){
@@ -320,26 +324,28 @@
 			if (lastDay != "" && lastDay > day){
 				bracketSvg.selectAll(".logoLabel" + lastDay).remove();
 			}
+			if (day != 0){
+				var roundWinners = winningTeams[day];
+				roundWinners.forEach(function (winner){
+					var currSlice = {x: Number(winner.position), y: Number(day)};
+					var teamName = winner.name;
+					if (Number(day) == 5 && teamName == "Gonzaga"){
+						currSlice = {x: 1, y: 5};
+					}
+					var currCentroid = getCentroid(currSlice);
+					if (teamName != "Rhode Island"){
+						bracketSvg.append('image')
+							.attr("class", "logoLabel" + day)
+							.attr("id", "logoLabel" + teamName + day)
+							.attr("xlink:href", "Data/logos/" + teamName + ".png")
+							.attr("x", currCentroid[0] - 8)
+							.attr("y", currCentroid[1] - 5)
+							.attr("width", "15")
+							.attr("height", "15");
+					}
+				});
+			}
 			lastDay = day;
-			var roundWinners = winningTeams[day];
-			roundWinners.forEach(function (winner){
-				var currSlice = {x: Number(winner.position), y: Number(day)};
-				var teamName = winner.name;
-				if (Number(day) == 5 && teamName == "Gonzaga"){
-					currSlice = {x: 1, y: 5};
-				}
-				var currCentroid = getCentroid(currSlice);
-				if (teamName != "Rhode Island"){
-					bracketSvg.append('image')
-						.attr("class", "logoLabel" + day)
-						.attr("id", "logoLabel" + teamName + day)
-						.attr("xlink:href", "Data/logos/" + teamName + ".png")
-						.attr("x", currCentroid[0] - 8)
-						.attr("y", currCentroid[1] - 5)
-						.attr("width", "15")
-						.attr("height", "15");
-				}
-			});
 		}
 		/*
 		function updateRound(day){
@@ -386,6 +392,66 @@
 					}
 				}
 				game += interval;
+			}
+		}
+		// On mouse move
+		function mouseMove(d){
+			//console.log(d);
+			var roundBins = getScales();
+			var hueScale = d3.scaleLinear().domain([1,64]).range([0, 360]);
+			if (lastID != ""){
+				reset(bracketSvg, roundBins, lastID);
+			}
+			var hueIndex = hueScale(d.x);
+			var saturationIndex = reverseData.get(d.x)[0].rd0;
+			if (d.y == currentDay){
+				lastID = {x: d.x, y: d.y};
+				// Highlights outer layer
+				bracketSvg.selectAll("#p" + d.x + d.y)
+							.style("fill", "#C8C8C8");
+				var teamName = winningTeams[d.y][d.x -1].name;
+				// Goes through path and fills in
+				for (var i = currentDay + 1; i < 6; i++){
+					var currScale = roundBins[i - 1];
+					var currID = "#p" + currScale(d.x) + i;
+					var rdID = "rd" + i;
+					console.log(teamPredict.get(teamName));
+					saturationIndex = reverseData.get(d.x)[0][rdID];
+					bracketSvg.selectAll(currID)
+						.style("fill", d3.hsl(hueIndex, saturationIndex, 0.5));
+					// Slice labels
+					var currSlice = {x: d.x, y:i};
+					var currCentroid = getCentroid(currSlice);
+					bracketSvg.append("text")
+						.attr("id", "sliceLabel")
+						.attr("x", currCentroid[0])
+						.attr("y", currCentroid[1])
+						.attr("text-anchor", "middle")
+						.attr("font-size", "8")
+						.text(saturationIndex.toFixed(2));
+
+				}
+				// Center label
+				bracketSvg.append("circle")
+					.attr("id", "centerLabel")
+					.attr("cx", 0)
+					.attr("cy", 0)
+					.attr("r", padding)
+					.attr("fill", "white");
+				bracketSvg.append("text")
+					.attr("id", "centerLabel")
+					.attr("x", 0)
+					.attr("y", 0)
+					.attr("font-size", "8pt")
+					.attr("text-anchor", "middle")
+					.text(reverseData.get(d.x)[0]["teamName"]);
+				bracketSvg.append("text")
+					.attr("id", "centerLabel")
+					.attr("x", 0)
+					.attr("y", 10)
+					.attr("font-size", "8pt")
+					.attr("text-anchor", "middle")	
+					.text(reverseData.get(d.x)[0]["rd6"].toFixed(2));
 			}
 		}
 		*/
