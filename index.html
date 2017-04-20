@@ -230,7 +230,8 @@
 			return roundScales;
 		}
 		// Removes all changes made by last interaction
-		function reset(bracketSvg, roundBins){
+		function reset(bracketSvg){
+			var roundBins = getScales();
 			bracketSvg.selectAll("#p" + lastID.x + lastID.y)
 				.style("fill", function(d){
 					return "white";
@@ -286,15 +287,7 @@
 		function mouseMove(d){
 			var roundBins = getScales();
 			if (lastID != ""){
-				reset(bracketSvg, roundBins);
-				if (d.y > 0 && d.y == currentDay){
-					// bracketSvg.selectAll(".logoLabel" + lastDay)
-					// 	.style("fill", "gray");
-					var pastLogos = document.getElementsByClassName("roundSlice" + (d.y - 1));
-					for (var index = 0; index < pastLogos.length; index++){
-						pastLogos[index].style.fill = "#B8B8B8";
-					}
-				}
+				reset(bracketSvg);
 			}
 			if (d.y == currentDay){
 				// Highlights outer layer
@@ -467,6 +460,7 @@
 		// Updates the round after a change in the slider
 		function updateRound(day){
 			d3.select("#sliderP").selectAll(".sliderLabel").remove();
+			if (lastID != "") reset(bracketSvg);
 			if (lastDay != "" && lastDay > day){
 				bracketSvg.selectAll(".logoLabel" + lastDay).remove();
 				var pastSlices = document.getElementsByClassName("roundSlice" + day);
@@ -480,10 +474,6 @@
 				}
 			}
 			if (lastDay < day){
-				var pastSlices = document.getElementsByClassName("roundSlice" + lastDay);
-				for (var index = 0; index < pastSlices.length; index++){
-					pastSlices[index].style.fill = "#B8B8B8";
-				}
 				var pastLogos = document.getElementsByClassName("logoLabel" + lastDay);
 				for (var index = 0; index < pastLogos.length; index++){
 					pastLogos[index].style.opacity = 0.2;

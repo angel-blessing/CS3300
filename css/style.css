@@ -6,6 +6,14 @@ html {
     font-family: NexaLight;
     src: url("NexaLight.otf") format("opentype");
 }
+@font-face {
+    font-family: NCAA;
+    src: url("NCAA.otf") format("opentype");
+}
+@font-face {
+    font-family: NexaBold;
+    src: url("NexaBold.otf") format("opentype");
+}
 .header{
     width: 100%;
     text-align:center;
@@ -37,6 +45,10 @@ svg{
 .sliceLabel{
     font-family: NexaLight;
     font-weight: bold;
+    font-size: 10;
+}
+.centerLabel{
+    font-family: NexaLight;
     font-size: 10;
 }
 div {
