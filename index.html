@@ -4,11 +4,11 @@
 	</title>
 	<script src="https://d3js.org/d3.v4.min.js"></script>
 	<link rel="stylesheet" href="css/style.css">
-	<h1> March Madness </h1>
+	<h1> March Madness 2017</h1>
 	<div id = "bracket">
-		<h2> March Madness 2017 </h2>
+		<h2 id = "sliderP"><h2>
 		<p>
-			Day <input id = "daySlider" type = "range" min = "0" max = "6" value = "0">
+			<input id = "daySlider" type = "range" min = "0" max = "6" value = "0">
 		</p>
 		<svg id = "bracketCircle" height = "800px" width = "900px"></svg>
 	</div>
@@ -189,12 +189,10 @@
 			return d3.arc()
 			    .startAngle(function(d) {
 			    	var xDisplacement = 1 + ((d.x - 1) * Math.pow(2, d.y));
-			    	//console.log("b" + xDisplacement);
 			    	return Math.max(0, Math.min(2 * Math.PI, gameScale(xDisplacement)));
 			    })
 			    .endAngle(function(d) {
 			    	var xDisplacement =  1 + ((d.x) * Math.pow(2, d.y));
-			    	//console.log("e" + xDisplacement);
 			    	return Math.max(0, Math.min(2 * Math.PI, gameScale(xDisplacement))); })
 			 	.innerRadius(function(d) {
 			 		return Math.max(0, roundScale(d.y));})
@@ -216,22 +214,6 @@
 			});
 		}
 		// Creates the quantize scales for each round to the outer placement
-		function getScales(){
-			var roundScales = [];
-			// Placeholder scale for round 0 to make things easier later
-			var round0 = d3.scaleLinear().domain([1,65]).range([1,65]);
-			roundScales.push(round0);
-			for (var round = 1; round < 7; round++){
-				var tempRange = []
-				for (var rangeNum = 1; rangeNum <= 64/Math.pow(2, round); rangeNum++){
-					tempRange.push(rangeNum);
-				}
-				var tempScale = d3.scaleQuantize().domain([1, 64]).range(tempRange);
-				roundScales.push(tempScale);
-			}
-			return roundScales;
-		}
-		// Creates a hue scale for 
 		function getScales(){
 			var roundScales = [];
 			// Placeholder scale for round 0 to make things easier later
@@ -269,14 +251,8 @@
 			bracketSvg.selectAll(".centerLabel").remove();
 			bracketSvg.selectAll(".sliceLabel").remove();
 		}
-		function getChanges(teamName){
-			//console.log(teamName);
-
-			//var teamName = teamData[0]["teamName"];
-
-		}
+		// Get the change in percentage for winning the whole tournament
 		function finalChanges(teamName){
-			//console.log(updatedScores.get(teamName));
 			if (currentDay == 5 && teamName == undefined){
 				teamName = "Gonzaga";
 			}
@@ -306,11 +282,8 @@
 				.attr("text-anchor", "middle")	
 				.text(percentChange);
 		}
-
-		var myScale;
-		// On mouse move
+		//  Does all functionality when moving the mouse
 		function mouseMove(d){
-			//console.log(d);
 			var roundBins = getScales();
 			var hueScale = d3.scaleLinear().domain([1,64]).range([0, 360]);
 			if (lastID != ""){
@@ -330,7 +303,6 @@
 				bracketSvg.selectAll("#p" + d.x + d.y)
 							.style("fill", "#C8C8C8");
 				var teamName = winningTeams[d.y][d.x -1].name;
-				if (currentDay != 0) getChanges(teamName);
 				var tempTeam = teamPredict.get(teamName);
 				var probabilities = updateProbabilities(tempTeam);
 				var probIndex = 0;
@@ -380,9 +352,9 @@
 				var centerIndex = probabilities[probIndex];
 				if (centerIndex * 100 < 1){
 						centerIndex = "<1%";
-					}
-					else{
-						centerIndex = (centerIndex.toFixed(2) * 100).toFixed(0) + "%";
+				}
+				else{
+					centerIndex = (centerIndex.toFixed(2) * 100).toFixed(0) + "%";
 				}
 				bracketSvg.append("text")
 					.attr("class", "centerLabel")
@@ -395,10 +367,32 @@
 				lastID = {x: d.x, y: d.y};
 			}
 		}
-		function showGame(d){
+		// Assigns the appropriate text based off of the day
+		function sliderText(numDay){
+
+			if (numDay == 0){
+				return "Predictions";
+			}
+			else if (numDay == 1){
+				return "Round 1";
+			}
+			else if (numDay == 2){
+				return "Round 2";
+			}
+			else if (numDay == 3){
+				return "Sweet Sixteen";
+			}
+			else if (numDay == 4){
+				return "Elight Eight";
+			}
+			else if (numDay == 5){
+				return "Final Four";
+			}
+			else {
+				return "National Championships";
+			}
 			console.log(d);
 		}
-		var myScales;
 	    var bracketSvg = d3.select("#bracketCircle")
 		    				.append("g")
 		    				.attr("transform", "translate(" + width/2 + "," + width/2 + ")");
@@ -420,17 +414,6 @@
 				.attr("fill", "white")
 				.attr("stroke", "#90908B")
 				.on("mousemove", mouseMove);
-			// slices.forEach(function(slice){
-			// 	var c = getCentroid(slice);
-			// 	bracketSvg.append("rect")
-			// 		.attr("x", c[0])
-			// 		.attr("y", c[1])
-			// 		.attr("width", 10)
-			// 		.attr("height", 10);
-			// });
-			// bracketSvg.on("click", function(d){
-			// 		console.log(d3.select(this));
-			// });
 			// Initializes the center circle
 			bracketSvg.append("circle")
 				.attr("cx", 0)
@@ -479,13 +462,13 @@
 					newProbs.push(currProb);
 				}
 			}
-			//console.log(newProbs);
 			return newProbs;
 		}
 		var lastDay = 0;
 		var currentDay = 0;
+		// Updates the round after a change in the slider
 		function updateRound(day){
-			//console.log("----- NEW DAY -----");
+			d3.select("#sliderP").selectAll(".sliderLabel").remove();
 			if (lastDay != "" && lastDay > day){
 				bracketSvg.selectAll(".logoLabel" + lastDay).remove();
 				var pastLogos = document.getElementsByClassName("roundSlice" + day);
@@ -495,8 +478,6 @@
 				}
 			}
 			if (lastDay < day){
-				// bracketSvg.selectAll(".logoLabel" + lastDay)
-				// 	.style("fill", "gray");
 				var pastLogos = document.getElementsByClassName("roundSlice" + lastDay);
 				for (var index = 0; index < pastLogos.length; index++){
 					pastLogos[index].style.fill = "#B8B8B8";
@@ -538,10 +519,26 @@
 			}
 			lastDay = day;
 		}
+		// Initializes round text
+		d3.select("#sliderP").append("text")
+				.text("Predictions")
+				.attr("class", "sliderLabel")
+				.append("x", -100)
+				.append("y", 0)
+				.attr("font-size", "8pt")
+				.attr("text-anchor", "middle");
 		// Changes round
 		d3.select("#daySlider").on("input", function(){
 			updateRound(Number(daySlider.value)); 
 			currentDay = Number(daySlider.value);
+			var roundText = sliderText(daySlider.value);
+			d3.select("#sliderP").append("text")
+				.text(roundText)
+				.attr("class", "sliderLabel")
+				.append("x", 0)
+				.append("y", 0)
+				.attr("font-size", "8pt")
+				.attr("text-anchor", "middle");
 		});
 	</script>
 </html>
