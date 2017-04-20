@@ -34,7 +34,11 @@ svg{
     border: none;
     background-color: white;
 }
-
+.sliceLabel{
+    font-family: NexaLight;
+    font-weight: bold;
+    font-size: 10;
+}
 div {
     text-align: center;
 }

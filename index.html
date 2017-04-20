@@ -285,7 +285,6 @@
 		//  Does all functionality when moving the mouse
 		function mouseMove(d){
 			var roundBins = getScales();
-			var hueScale = d3.scaleLinear().domain([1,64]).range([0, 360]);
 			if (lastID != ""){
 				reset(bracketSvg, roundBins);
 				if (d.y > 0 && d.y == currentDay){
@@ -297,7 +296,6 @@
 					}
 				}
 			}
-			var hueIndex = hueScale(d.x);
 			if (d.y == currentDay){
 				// Highlights outer layer
 				bracketSvg.selectAll("#p" + d.x + d.y)
@@ -471,16 +469,24 @@
 			d3.select("#sliderP").selectAll(".sliderLabel").remove();
 			if (lastDay != "" && lastDay > day){
 				bracketSvg.selectAll(".logoLabel" + lastDay).remove();
-				var pastLogos = document.getElementsByClassName("roundSlice" + day);
+				var pastSlices = document.getElementsByClassName("roundSlice" + day);
+				for (var index = 0; index < pastSlices.length; index++){
+					pastSlices[index].style.fill = "white";
+					pastSlices[index].style.opacity = 1;
+				}
+				var pastLogos = document.getElementsByClassName("logoLabel" + day);
 				for (var index = 0; index < pastLogos.length; index++){
-					pastLogos[index].style.fill = "white";
 					pastLogos[index].style.opacity = 1;
 				}
 			}
 			if (lastDay < day){
-				var pastLogos = document.getElementsByClassName("roundSlice" + lastDay);
+				var pastSlices = document.getElementsByClassName("roundSlice" + lastDay);
+				for (var index = 0; index < pastSlices.length; index++){
+					pastSlices[index].style.fill = "#B8B8B8";
+				}
+				var pastLogos = document.getElementsByClassName("logoLabel" + lastDay);
 				for (var index = 0; index < pastLogos.length; index++){
-					pastLogos[index].style.fill = "#B8B8B8";
+					pastLogos[index].style.opacity = 0.2;
 				}
 			}
 			// if (day == 6){
