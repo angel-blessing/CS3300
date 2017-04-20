@@ -254,8 +254,9 @@
 					return "white";
 				})
 				.style("opacity", 1);
-			for (var i = 1; i < 6; i++){
+			for (var i = lastID.y; i < 6; i++){
 				var teamName = winningTeams[lastID.y][lastID.x -1].name;
+				if (teamName == undefined) teamName = "Gonzaga";
 				var tempTeam = teamPredict.get(teamName);
 				var currScale = roundBins[i];
 				var currID = "#p" + currScale(tempTeam[0]["placement"]) + i;
@@ -276,6 +277,9 @@
 		}
 		function finalChanges(teamName){
 			//console.log(updatedScores.get(teamName));
+			if (currentDay == 5 && teamName == undefined){
+				teamName = "Gonzaga";
+			}
 			var pastStats;
 			var pastPercent;
 			if (currentDay == 1){
@@ -311,6 +315,14 @@
 			var hueScale = d3.scaleLinear().domain([1,64]).range([0, 360]);
 			if (lastID != ""){
 				reset(bracketSvg, roundBins);
+				if (d.y > 0 && d.y == currentDay){
+					// bracketSvg.selectAll(".logoLabel" + lastDay)
+					// 	.style("fill", "gray");
+					var pastLogos = document.getElementsByClassName("roundSlice" + (d.y - 1));
+					for (var index = 0; index < pastLogos.length; index++){
+						pastLogos[index].style.fill = "#B8B8B8";
+					}
+				}
 			}
 			var hueIndex = hueScale(d.x);
 			if (d.y == currentDay){
@@ -432,6 +444,7 @@
 				var currSlice = {x: i, y:0};
 				var currCentroid = getCentroid(currSlice);
 				var imgExtension;
+				if (teamName == undefined) teamName = "Gonzaga";
 				if (teamName == "Rhode Island") imgExtension = ".svg";
 				else imgExtension = ".png";
 				bracketSvg.append('image')
@@ -448,7 +461,11 @@
 		function updateProbabilities(teamData){
 			var newProbs = [];
 			if (currentDay != 0){
-				var teamName = teamData[0]["teamName"];
+				var teamName;
+				if (currentDay == 5 && teamData == undefined){
+					teamName = "Gonzaga";
+				}
+				else teamName = teamData[0]["teamName"];
 				var teamStats = updatedScores.get(teamName)[currentDay - 1];
 				for (var i = currentDay + 1; i < 7; i++){
 					var rdID = "rdWin" + i;
@@ -471,7 +488,7 @@
 			//console.log("----- NEW DAY -----");
 			if (lastDay != "" && lastDay > day){
 				bracketSvg.selectAll(".logoLabel" + lastDay).remove();
-				var pastLogos = document.getElementsByClassName("roundSlice" + lastDay);
+				var pastLogos = document.getElementsByClassName("roundSlice" + day);
 				for (var index = 0; index < pastLogos.length; index++){
 					pastLogos[index].style.fill = "white";
 					pastLogos[index].style.opacity = 1;
@@ -505,10 +522,7 @@
 				roundWinners.forEach(function (winner){
 					var currSlice = {x: Number(winner.position), y: Number(day)};
 					var teamName = winner.name;
-					if (Number(day) == 5 && teamName == "Gonzaga"){
-						currSlice = {x: 1, y: 5};
-						console.log("final");
-					}
+					if (teamName == undefined) teamName = "Gonzaga";
 					var currCentroid = getCentroid(currSlice);
 					if (teamName == "Rhode Island") imgExtension = ".svg";
 					else imgExtension = ".png";
