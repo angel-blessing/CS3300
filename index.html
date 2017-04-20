@@ -70,6 +70,15 @@
 				placement: Number(line["position"])
 			};
 		}
+		// Parser for the score data
+		function parseColors(line){
+			return {
+				placement: Number(line["position"]),
+				teamName: line["team_name"],
+				teamColor: line["team_color"],
+				teamID: Number(line["team_id"]),
+			};
+		}
 		// Nested datasets after parsing
 		var reverseData;
 		var reverseScoreData;
@@ -79,6 +88,8 @@
 		var losingTeams;
 		var rawUpdatedScores;
 		var updatedScores;
+		var rawColors;
+		var teamColors;
 	    // Load data for forecast
 		d3.csv("Data/filtered_fivethirtyeight_ncaa_forecasts.csv", parsePredictLine, function(data){
 			rawPredictData = data;
@@ -113,6 +124,13 @@
 			updatedScores = d3.nest().key(function (d) {
 				return d.teamName;
 			}).map(rawUpdatedScores);
+		});
+		// Load data for team colors
+		d3.csv("Data/team_colors.csv", parseColors, function(data){
+			rawColors = data;
+			teamColors = d3.nest().key(function (d) {
+				return d.teamName;
+			}).map(rawColors);
 		});
 		// Creates a data structure to hold the winning teams for each round
 		function getWinners(){
@@ -213,12 +231,29 @@
 			}
 			return roundScales;
 		}
+		// Creates a hue scale for 
+		function getScales(){
+			var roundScales = [];
+			// Placeholder scale for round 0 to make things easier later
+			var round0 = d3.scaleLinear().domain([1,65]).range([1,65]);
+			roundScales.push(round0);
+			for (var round = 1; round < 7; round++){
+				var tempRange = []
+				for (var rangeNum = 1; rangeNum <= 64/Math.pow(2, round); rangeNum++){
+					tempRange.push(rangeNum);
+				}
+				var tempScale = d3.scaleQuantize().domain([1, 64]).range(tempRange);
+				roundScales.push(tempScale);
+			}
+			return roundScales;
+		}
 		// Removes all changes made by last interaction
 		function reset(bracketSvg, roundBins){
 			bracketSvg.selectAll("#p" + lastID.x + lastID.y)
 				.style("fill", function(d){
 					return "white";
-			});
+				})
+				.style("opacity", 1);
 			for (var i = 1; i < 6; i++){
 				var teamName = winningTeams[lastID.y][lastID.x -1].name;
 				var tempTeam = teamPredict.get(teamName);
@@ -227,16 +262,47 @@
 				bracketSvg.selectAll(currID)
 					.style("fill", function(d){
 						return "white";
-				});
+					})
+					.style("opacity", 1);
 			}
 			bracketSvg.selectAll(".centerLabel").remove();
 			bracketSvg.selectAll(".sliceLabel").remove();
 		}
-		function getChanges(teamData){
-			console.log(teamData);
-			var teamName = teamData[0]["teamName"];
+		function getChanges(teamName){
+			//console.log(teamName);
+
+			//var teamName = teamData[0]["teamName"];
 
 		}
+		function finalChanges(teamName){
+			//console.log(updatedScores.get(teamName));
+			var pastStats;
+			var pastPercent;
+			if (currentDay == 1){
+				pastStats = teamPredict.get(teamName)[0];
+				pastPercent = pastStats["rd6"];
+			}
+			else {
+				pastStats = updatedScores.get(teamName)[currentDay - 2];
+				pastPercent = pastStats["rdWin6"]
+			}
+			var currentStats = updatedScores.get(teamName)[currentDay - 1];
+			var percentChange = currentStats["rdWin6"] - pastPercent;
+			if ((percentChange * 100).toFixed(0) < 0){
+				percentChange = "-" + (percentChange.toFixed(2) * 100);
+			}
+			else{
+				percentChange = "+" + (percentChange.toFixed(2) * 100) + "%";
+			}
+			bracketSvg.append("text")
+				.attr("class", "centerLabel")
+				.attr("x", 0)
+				.attr("y", 20)
+				.attr("font-size", "8pt")
+				.attr("text-anchor", "middle")	
+				.text(percentChange);
+		}
+
 		var myScale;
 		// On mouse move
 		function mouseMove(d){
@@ -248,7 +314,6 @@
 			}
 			var hueIndex = hueScale(d.x);
 			if (d.y == currentDay){
-				lastID = {x: d.x, y: d.y};
 				// Highlights outer layer
 				bracketSvg.selectAll("#p" + d.x + d.y)
 							.style("fill", "#C8C8C8");
@@ -266,7 +331,8 @@
 					saturationIndex = probabilities[probIndex];
 					probIndex += 1;
 					bracketSvg.selectAll(currID)
-						.style("fill", d3.hsl(hueIndex, saturationIndex, 0.5));
+						.style("fill", teamColors.get(teamName)[0]["teamColor"])
+						.style("opacity", saturationIndex);
 					// Slice labels
 					var currSlice = {x: currScale(tempTeam[0]["placement"]), y:i};
 					var currCentroid = getCentroid(currSlice);
@@ -313,6 +379,8 @@
 					.attr("font-size", "8pt")
 					.attr("text-anchor", "middle")	
 					.text(centerIndex);
+				if (currentDay != 0) finalChanges(teamName);
+				lastID = {x: d.x, y: d.y};
 			}
 		}
 		function showGame(d){
@@ -331,6 +399,9 @@
 			paths.data(slices).enter()
 				.append("path")
 				.attr("d", getArc())
+				.attr("class", function(d){
+					return "roundSlice" + d.y;
+				})
 				.attr("id", function(d) {
 					return "p" + d.x + d.y;
 				})
@@ -360,10 +431,13 @@
 				var teamName = reverseData.get(i)[0]["teamName"];
 				var currSlice = {x: i, y:0};
 				var currCentroid = getCentroid(currSlice);
+				var imgExtension;
+				if (teamName == "Rhode Island") imgExtension = ".svg";
+				else imgExtension = ".png";
 				bracketSvg.append('image')
 					.attr("class", "logoLabel0")
 					.attr("id", "logoLabel" + teamName + "0")
-					.attr("xlink:href", "Data/logos/" + teamName + ".png")
+					.attr("xlink:href", "Data/logos/" + teamName + imgExtension)
 					.attr("x", currCentroid[0] - 10)
 					.attr("y", currCentroid[1] - 10)
 					.attr("width", "20")
@@ -397,6 +471,19 @@
 			//console.log("----- NEW DAY -----");
 			if (lastDay != "" && lastDay > day){
 				bracketSvg.selectAll(".logoLabel" + lastDay).remove();
+				var pastLogos = document.getElementsByClassName("roundSlice" + lastDay);
+				for (var index = 0; index < pastLogos.length; index++){
+					pastLogos[index].style.fill = "white";
+					pastLogos[index].style.opacity = 1;
+				}
+			}
+			if (lastDay < day){
+				// bracketSvg.selectAll(".logoLabel" + lastDay)
+				// 	.style("fill", "gray");
+				var pastLogos = document.getElementsByClassName("roundSlice" + lastDay);
+				for (var index = 0; index < pastLogos.length; index++){
+					pastLogos[index].style.fill = "#B8B8B8";
+				}
 			}
 			// if (day == 6){
 			// 	var teamName = "North Carolina"
@@ -420,18 +507,19 @@
 					var teamName = winner.name;
 					if (Number(day) == 5 && teamName == "Gonzaga"){
 						currSlice = {x: 1, y: 5};
+						console.log("final");
 					}
 					var currCentroid = getCentroid(currSlice);
-					if (teamName != "Rhode Island"){
-						bracketSvg.append('image')
-							.attr("class", "logoLabel" + day)
-							.attr("id", "logoLabel" + teamName + day)
-							.attr("xlink:href", "Data/logos/" + teamName + ".png")
-							.attr("x", currCentroid[0] - 10)
-							.attr("y", currCentroid[1] - 10)
-							.attr("width", "20")
-							.attr("height", "20");
-					}
+					if (teamName == "Rhode Island") imgExtension = ".svg";
+					else imgExtension = ".png";
+					bracketSvg.append('image')
+						.attr("class", "logoLabel" + day)
+						.attr("id", "logoLabel" + teamName + day)
+						.attr("xlink:href", "Data/logos/" + teamName + imgExtension)
+						.attr("x", currCentroid[0] - 10)
+						.attr("y", currCentroid[1] - 10)
+						.attr("width", "20")
+						.attr("height", "20");
 				});
 			}
 			lastDay = day;
