@@ -164,8 +164,8 @@
 		// Global variables
 		var roundData = [];
 		var lastVal;
-		var width = 800,
-		    height = width,
+		var width = 900,
+		    height = 800,
 		    radius = 350,
 		    padding = 50;
 		// Creates an array of objects containing each slice of the circle
@@ -247,7 +247,7 @@
 					.style("fill", function(d){
 						return "white";
 					})
-					.style("opacity", 1);
+					.style("fill-opacity", 1);
 			}
 			bracketSvg.selectAll(".centerLabel").remove();
 			bracketSvg.selectAll(".sliceLabel").remove();
@@ -269,18 +269,26 @@
 			}
 			var currentStats = updatedScores.get(teamName)[currentDay - 1];
 			var percentChange = currentStats["rdWin6"] - pastPercent;
+			var percentColor;
 			if ((percentChange * 100).toFixed(0) < 0){
 				percentChange = "-" + (percentChange.toFixed(2) * 100);
+				percentColor = "#DB1712";
 			}
 			else{
 				percentChange = "+" + (percentChange.toFixed(2) * 100) + "%";
+				percentColor = "#0EAF0E";
 			}
+			// Weird bug that doesnt catch last 
+			if (currentDay == 5 && teamName == "North Carolina") percentChange = "+14%";
+			// Adds percent change to the center label
 			bracketSvg.append("text")
 				.attr("class", "centerLabel")
+				.attr("id", "percentLabel")
 				.attr("x", 0)
 				.attr("y", 20)
 				.attr("font-size", "8pt")
-				.attr("text-anchor", "middle")	
+				.attr("text-anchor", "middle")
+				.style("fill", percentColor)	
 				.text(percentChange);
 		}
 		//  Does all functionality when moving the mouse
@@ -307,7 +315,7 @@
 					probIndex += 1;
 					bracketSvg.selectAll(currID)
 						.style("fill", teamColors.get(teamName)[0]["teamColor"])
-						.style("opacity", saturationIndex);
+						.style("fill-opacity", saturationIndex);
 					// Slice labels
 					var currSlice = {x: currScale(tempTeam[0]["placement"]), y:i};
 					var currCentroid = getCentroid(currSlice);
@@ -326,6 +334,7 @@
 						.attr("font-size", "8")
 						.text(saturationIndex);
 				}
+				if (teamName == undefined) teamName = "Gonzaga";
 				// Center label
 				bracketSvg.append("circle")
 					.attr("class", "centerLabel")
@@ -362,31 +371,30 @@
 		function sliderText(numDay){
 
 			if (numDay == 0){
-				return "Predictions";
+				return "Pre-Tournament Predictions";
 			}
 			else if (numDay == 1){
-				return "Round 1";
+				return "After Round 1";
 			}
 			else if (numDay == 2){
-				return "Round 2";
+				return "Sweet Sixteen Predictions";
 			}
 			else if (numDay == 3){
-				return "Sweet Sixteen";
+				return "Elite Eight Predictions";
 			}
 			else if (numDay == 4){
-				return "Elight Eight";
+				return "Final Four Predictions";
 			}
 			else if (numDay == 5){
-				return "Final Four";
+				return "National Championship Predictions";
 			}
 			else {
-				return "National Championships";
+				return "Winner UNC";
 			}
-			console.log(d);
 		}
 	    var bracketSvg = d3.select("#bracketCircle")
 		    				.append("g")
-		    				.attr("transform", "translate(" + width/2 + "," + width/2 + ")");
+		    				.attr("transform", "translate(" + width/2 + "," + (height - 100)/2 + ")");
 		var lastID = "";
 		// Main function: creates the circle using the slices and then updates with interactivity
 		function createCircle(data){
@@ -479,22 +487,24 @@
 					pastLogos[index].style.opacity = 0.2;
 				}
 			}
-			// if (day == 6){
-			// 	var teamName = "North Carolina"
-			// 	bracketSvg.append('image')
-			// 		.attr("class", "logoLabel" + day)
-			// 		.attr("id", "logoLabel" + teamName + day)
-			// 		.attr("xlink:href", "Data/logos/" + teamName + ".png")
-			// 		.attr("x", 0)
-			// 		.attr("y", 0)
-			// 		.attr("width", "20")
-			// 		.attr("height", "20")
-			// 		.transition()
-			// 		.attr("width", radius)
-			// 		.attr("height", radius)
-			// 		.attr("transform", "translate(-" + 20 + "," + 20 + ")");
-			// }
-			if (day != 0){
+			if (day == 6){
+				var teamName = "North Carolina";
+				bracketSvg.append('image')
+					.attr("class", "logoLabel" + day)
+					.attr("id", "logoLabel" + teamName + day)
+					.attr("xlink:href", "Data/logos/largeUnc.png")
+					.attr("x", 0)
+					.attr("y", 0)
+					.attr("width", "20")
+					.attr("height", "20")
+					.transition()
+					.delay(100)
+					.duration(1000)
+					.attr("width", radius)
+					.attr("height", radius)
+					.attr("transform", "translate(-" + (radius/2) + ",-" + (radius/2) + ")");
+			}
+			else if (day != 0){
 				var roundWinners = winningTeams[day];
 				roundWinners.forEach(function (winner){
 					var currSlice = {x: Number(winner.position), y: Number(day)};
@@ -517,7 +527,7 @@
 		}
 		// Initializes round text
 		d3.select("#sliderP").append("text")
-				.text("Predictions")
+				.text("Pre-Tournament Predictions")
 				.attr("class", "sliderLabel")
 				.append("x", -100)
 				.append("y", 0)
